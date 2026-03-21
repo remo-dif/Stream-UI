@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MoreVertical, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ChatWindow } from "@/components/chat/ChatWindow";
 import { chatApi } from "@/lib/api";
@@ -33,7 +33,7 @@ export default function ConversationPage({
   params: Promise<Params>;
 }) {
   const { conversationId } = use(params);
-  const { user, isLoading: authLoading } = useRequireAuth();
+  const { isLoading: authLoading } = useRequireAuth();
   const { token } = useAuthStore();
   const router = useRouter();
 

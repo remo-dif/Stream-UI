@@ -134,19 +134,6 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Client-side guard: only users with the 'admin' role can access this page
-  if (user && user.role !== "admin") {
-    return (
-      <div className="h-full flex flex-col items-center justify-center text-center px-6">
-        <ShieldAlert className="w-12 h-12 text-destructive/40 mb-4" />
-        <h2 className="text-lg font-semibold">Access Denied</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          You need the admin role to view this page.
-        </p>
-      </div>
-    );
-  }
-
   // Load user data on mount
   useEffect(() => {
     if (!token) {
@@ -182,6 +169,19 @@ export default function AdminPage() {
         : users,
     );
   }, [search, users]);
+
+  // Client-side guard: only users with the 'admin' role can access this page
+  if (user && user.role !== "admin") {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center px-6">
+        <ShieldAlert className="w-12 h-12 text-destructive/40 mb-4" />
+        <h2 className="text-lg font-semibold">Access Denied</h2>
+        <p className="text-muted-foreground text-sm mt-1">
+          You need the admin role to view this page.
+        </p>
+      </div>
+    );
+  }
 
   const handleRoleUpdate = (userId: string, role: UserRole) => {
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));

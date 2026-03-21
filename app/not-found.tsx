@@ -14,7 +14,7 @@ export default function NotFound() {
         <p className="text-8xl font-bold text-primary/20 mb-4">404</p>
         <h1 className="text-2xl font-bold mb-2">Page not found</h1>
         <p className="text-muted-foreground text-sm mb-8">
-          The page you're looking for doesn't exist.
+          The page you&apos;re looking for doesn&apos;t exist.
         </p>
         <Link
           href="/chat"

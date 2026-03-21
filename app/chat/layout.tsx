@@ -15,7 +15,7 @@ export default function ChatLayout({
   children: React.ReactNode;
 }) {
   useAuthInit();
-...
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <AppSidebar />

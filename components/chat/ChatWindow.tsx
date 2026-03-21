@@ -15,7 +15,6 @@ import type { TokenUsageMetadata } from "@/types";
 
 interface ChatWindowProps {
   conversationId: string;
-  initialTitle?: string;
   onTitleChange?: (title: string) => void;
 }
 
@@ -38,7 +37,6 @@ interface ChatWindowProps {
  */
 export function ChatWindow({
   conversationId,
-  initialTitle,
   onTitleChange,
 }: ChatWindowProps) {
   const { token, user } = useAuthStore();
@@ -110,7 +108,7 @@ export function ChatWindow({
 
   // ── Controlled input via hook (AI SDK v5 no longer owns input state) ────────
   // We decouple input management to allow for better control over form events and local state
-  const { input, handleChange, handleSubmit, handleKeyDown, clear } =
+  const { input, handleChange, handleSubmit } =
     useChatInput((text) => {
       clearError();
       sendMessage({ text });

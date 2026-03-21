@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { Settings, User, Building2, Key, Bell, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
-import { useAuthStore } from "@/lib/store";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { formatTokens, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 type Tab = "profile" | "tenant" | "api" | "notifications";
 
@@ -22,7 +21,6 @@ type Tab = "profile" | "tenant" | "api" | "notifications";
  */
 export default function SettingsPage() {
   const { user } = useRequireAuth();
-  const { token } = useAuthStore();
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);

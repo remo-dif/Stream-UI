@@ -109,7 +109,7 @@ function SubmitJobModal({
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
         <h2 className="font-semibold mb-4">Submit Async Job</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Jobs are processed in the background by BullMQ workers and won't block your chat.
+          Jobs are processed in the background by BullMQ workers and won&apos;t block your chat.
         </p>
         <textarea
           value={prompt}

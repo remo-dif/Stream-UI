@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { cn, truncate, getInitials, formatTokens } from "@/lib/utils";
+import { cn, truncate, getInitials } from "@/lib/utils";
 import { chatApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { QuotaIndicator } from "./QuotaIndicator";
@@ -28,7 +28,6 @@ import type { Conversation } from "@/types";
 
 interface AppSidebarProps {
   activeConversationId?: string;
-  onConversationSelect?: (id: string) => void;
 }
 
 /**
@@ -49,7 +48,6 @@ interface AppSidebarProps {
  */
 export function AppSidebar({
   activeConversationId,
-  onConversationSelect,
 }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
