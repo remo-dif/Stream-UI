@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 99%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 243 75% 95%;
+    --accent-foreground: 243 75% 40%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 243 75% 59%;
+    --radius: 0.75rem;
+    --chart-1: 243 75% 59%;
+    --chart-2: 262 83% 58%;
+    --chart-3: 291 64% 42%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 172 66% 50%;
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 243 75% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 16%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 222 47% 18%;
+    --sidebar-ring: 243 75% 59%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 92%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 92%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 92%;
+    --primary: 243 75% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 47% 14%;
+    --secondary-foreground: 210 40% 80%;
+    --muted: 222 47% 12%;
+    --muted-foreground: 215 16% 55%;
+    --accent: 243 75% 18%;
+    --accent-foreground: 243 75% 75%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 222 47% 16%;
+    --input: 222 47% 14%;
+    --ring: 243 75% 65%;
+    --chart-1: 243 75% 65%;
+    --chart-2: 262 83% 68%;
+    --chart-3: 291 64% 62%;
+    --chart-4: 38 92% 60%;
+    --chart-5: 172 66% 60%;
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 80%;
+    --sidebar-primary: 243 75% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 10%;
+    --sidebar-accent-foreground: 210 40% 80%;
+    --sidebar-border: 222 47% 12%;
+    --sidebar-ring: 243 75% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* ─── Prose for markdown ─────────────────────────────────────────────────────── */
+.chat-prose {
+  @apply text-foreground leading-relaxed;
+}
+.chat-prose h1,
+.chat-prose h2,
+.chat-prose h3 {
+  @apply font-semibold mt-4 mb-2;
+}
+.chat-prose h1 { @apply text-xl; }
+.chat-prose h2 { @apply text-lg; }
+.chat-prose h3 { @apply text-base; }
+.chat-prose p { @apply mb-3 last:mb-0; }
+.chat-prose ul { @apply list-disc pl-5 mb-3 space-y-1; }
+.chat-prose ol { @apply list-decimal pl-5 mb-3 space-y-1; }
+.chat-prose li > p { @apply mb-1; }
+.chat-prose code {
+  @apply font-mono text-sm bg-muted px-1.5 py-0.5 rounded text-primary;
+}
+.chat-prose pre {
+  @apply my-3 rounded-lg overflow-hidden;
+}
+.chat-prose pre code {
+  @apply bg-transparent p-0 text-inherit;
+}
+.chat-prose blockquote {
+  @apply border-l-4 border-primary/40 pl-4 italic text-muted-foreground my-3;
+}
+.chat-prose table {
+  @apply w-full border-collapse text-sm my-3;
+}
+.chat-prose th {
+  @apply border border-border bg-muted px-3 py-2 text-left font-semibold;
+}
+.chat-prose td {
+  @apply border border-border px-3 py-2;
+}
+.chat-prose a {
+  @apply text-primary underline underline-offset-2 hover:text-primary/80;
+}
+.chat-prose hr {
+  @apply border-border my-4;
+}
+
+/* ─── Token counter badge animation ─────────────────────────────────────────── */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.token-badge-update {
+  animation: count-up 0.2s ease-out;
+}
