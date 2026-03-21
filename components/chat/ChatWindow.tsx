@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { toast } from "sonner";
 import { MessageSquare } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
