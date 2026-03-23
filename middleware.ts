@@ -1,5 +1,5 @@
+import { CookieMethodsServer, createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 
 const PUBLIC_PATHS = ["/login", "/api"];
 
@@ -16,24 +16,26 @@ export async function middleware(request: NextRequest) {
     request: { headers: request.headers },
   });
 
+  // Configure cookie access methods for the Supabase client
+  const cookies = {
+    getAll() {
+      return request.cookies.getAll();
+    },
+    setAll(cookiesToSet) {
+      cookiesToSet.forEach(({ name, value }) =>
+        request.cookies.set(name, value),
+      );
+      cookiesToSet.forEach(({ name, value, options }) =>
+        response.cookies.set(name, value, options),
+      );
+    },
+  } as CookieMethodsServer;
+
+  // Create the Supabase client with cookie access configured for the middleware
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
+    { cookies },
   );
 
   const {
