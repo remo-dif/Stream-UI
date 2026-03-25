@@ -52,6 +52,7 @@ export function AppSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoadingConvs, setIsLoadingConvs] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const { user, token, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
@@ -75,6 +76,10 @@ export function AppSidebar({
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ─── Actions ───────────────────────────────────────────────────────────────
 
@@ -243,11 +248,11 @@ export function AppSidebar({
             collapsed && "justify-center",
           )}
         >
-          {theme === "dark" ? (
+          {mounted && (theme === "light" ? (
             <Sun className="w-4 h-4 shrink-0" />
           ) : (
             <Moon className="w-4 h-4 shrink-0" />
-          )}
+          ))}
           {!collapsed && <span>Toggle theme</span>}
         </button>
 
