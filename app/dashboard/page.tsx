@@ -259,6 +259,8 @@ const MOCK_SUMMARY: UsageSummary = {
   avgResponseTime: 1240,
   quotaUsedPercent: 47.3,
   quotaLimit: 300_000,
+  usedTokens: 142_000,
+  todayTokens: 4_200,
 };
 
 const MOCK_DAILY: DailyUsage[] = Array.from({ length: 30 }, (_, i) => {

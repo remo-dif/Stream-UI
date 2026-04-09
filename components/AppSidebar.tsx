@@ -21,7 +21,8 @@ import {
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { cn, truncate, getInitials } from "@/lib/utils";
-import { chatApi } from "@/lib/api";
+import { authApi, chatApi } from "@/lib/api";
+import { createClient } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/store";
 import { QuotaIndicator } from "./QuotaIndicator";
 import type { Conversation } from "@/types";
@@ -111,12 +112,26 @@ export function AppSidebar({
     }
   };
 
+  const handleLogout = async () => {
+    const supabase = createClient();
+
+    try {
+      if (token) {
+        await authApi.signOut(token).catch(() => undefined);
+      }
+      await supabase.auth.signOut();
+    } finally {
+      logout();
+      router.replace("/login");
+    }
+  };
+
   const navItems = [
     { href: "/chat", icon: MessageSquare, label: "Chat", exact: false },
     { href: "/dashboard", icon: BarChart2, label: "Usage Dashboard" },
     { href: "/jobs", icon: Briefcase, label: "Async Jobs" },
     // Only show Admin link if user has the admin role
-    ...(user?.role === "admin"
+    ...(user?.role === "admin" || user?.role === "superadmin"
       ? [{ href: "/admin", icon: Users, label: "Admin" }]
       : []),
   ];
@@ -291,7 +306,7 @@ export function AppSidebar({
             )}
             {!collapsed && (
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="p-1 rounded hover:bg-sidebar-accent text-sidebar-foreground/40 hover:text-destructive transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />

@@ -1,6 +1,6 @@
 // ─── Auth ───────────────────────────────────────────────────────────────────
 
-export type UserRole = "admin" | "user" | "viewer";
+export type UserRole = "admin" | "user" | "superadmin";
 
 export interface AuthUser {
   id: string;
@@ -10,6 +10,7 @@ export interface AuthUser {
   tenantName: string;
   avatarUrl?: string;
   fullName?: string;
+  isActive?: boolean;
 }
 
 // ─── Tenant ──────────────────────────────────────────────────────────────────
@@ -17,8 +18,7 @@ export interface AuthUser {
 export interface Tenant {
   id: string;
   name: string;
-  slug: string;
-  plan: "free" | "pro" | "enterprise";
+  plan: "starter" | "pro" | "enterprise";
   quotaTokens: number;
   usedTokens: number;
   createdAt: string;
@@ -29,21 +29,17 @@ export interface Tenant {
 export interface Conversation {
   id: string;
   title: string;
-  tenantId: string;
-  userId: string;
   model: string;
-  messageCount: number;
-  totalTokens: number;
+  isArchived?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ChatMessage {
   id: string;
-  conversationId: string;
   role: "user" | "assistant" | "system";
   content: string;
-  tokenCount?: number;
+  tokens?: number | null;
   metadata?: Record<string, unknown>;
   createdAt: string;
 }
@@ -58,17 +54,17 @@ export interface UsageSummary {
   avgResponseTime: number;
   quotaUsedPercent: number;
   quotaLimit: number;
+  usedTokens: number;
+  todayTokens: number;
 }
 
 export interface UsageLog {
   id: string;
-  conversationId: string;
-  userId: string;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
   model: string;
-  latencyMs: number;
+  latencyMs: number | null;
   createdAt: string;
 }
 
@@ -84,7 +80,7 @@ export type JobStatus = "waiting" | "active" | "completed" | "failed" | "delayed
 
 export interface AsyncJob {
   id: string;
-  type: "ai-processing";
+  type: string;
   status: JobStatus;
   prompt: string;
   result?: string;
@@ -105,7 +101,7 @@ export interface AdminUser {
   tenantId: string;
   tenantName: string;
   totalTokens: number;
-  lastActive: string;
+  lastActive: string | null;
   isActive: boolean;
   createdAt: string;
 }

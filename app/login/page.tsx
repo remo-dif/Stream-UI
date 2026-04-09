@@ -42,9 +42,7 @@ export default function LoginPage() {
       const supabase = createClient();
 
       if (mode === "sign-up") {
-        // Handle account creation via Supabase
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
+        await authApi.signUp(email, password);
         toast.success("Check your email to confirm your account");
         setMode("sign-in");
         return;

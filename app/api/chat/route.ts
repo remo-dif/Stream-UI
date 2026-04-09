@@ -1,17 +1,68 @@
+import { createTextStreamResponse } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 
 const NEST_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-/**
- * Chat Proxy Route
- * 
- * This route acts as a thin middleware between the frontend (AI SDK) and the 
- * NestJS backend. It handles:
- * 1. Auth injection: Forwards the Bearer token from the browser.
- * 2. Validation: Ensures a conversationId and valid user message exist.
- * 3. Error Translation: Maps NestJS status codes (429, 402) to UI-friendly JSON.
- * 4. Stream Piping: Pipes the raw SSE body directly back to the client.
- */
+function createBackendTextStream(body: ReadableStream<Uint8Array>) {
+  let buffer = "";
+  const decoder = new TextDecoder();
+  const processBuffer = (
+    controller: TransformStreamDefaultController<string>,
+    flush = false,
+  ) => {
+    let boundary = buffer.indexOf("\n\n");
+
+    while (boundary !== -1) {
+      const eventBlock = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+
+      for (const line of eventBlock.split(/\r?\n/)) {
+        if (!line.startsWith("data:")) continue;
+
+        const payload = line.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(payload) as { text?: string; error?: string };
+          if (parsed.text) controller.enqueue(parsed.text);
+          if (parsed.error) {
+            throw new Error(parsed.error);
+          }
+        } catch (error) {
+          if (error instanceof Error && error.message !== payload) {
+            throw error;
+          }
+        }
+      }
+
+      boundary = buffer.indexOf("\n\n");
+    }
+
+    if (flush && buffer.trim()) {
+      const payload = buffer.replace(/^data:\s*/, "").trim();
+      buffer = "";
+      if (!payload || payload === "[DONE]") return;
+
+      const parsed = JSON.parse(payload) as { text?: string };
+      if (parsed.text) controller.enqueue(parsed.text);
+    }
+  };
+
+  return body
+    .pipeThrough(
+      new TransformStream<Uint8Array, string>({
+        transform(chunk, controller) {
+          buffer += decoder.decode(chunk, { stream: true });
+          processBuffer(controller);
+        },
+        flush(controller) {
+          buffer += decoder.decode();
+          processBuffer(controller, true);
+        },
+      }),
+    );
+}
+
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
 
@@ -20,9 +71,8 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { messages, conversationId, data } = body;
+  const { messages, conversationId } = body;
 
-  // Basic validation before hitting the expensive backend
   if (!conversationId) {
     return NextResponse.json(
       { error: "conversationId is required" },
@@ -30,17 +80,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const lastMessage = messages[messages.length - 1];
-  if (!lastMessage || lastMessage.role !== "user") {
+  const lastMessage = messages?.[messages.length - 1];
+  const content =
+    typeof lastMessage?.text === "string"
+      ? lastMessage.text
+      : Array.isArray(lastMessage?.parts)
+        ? lastMessage.parts
+            .filter((part: { type?: string }) => part.type === "text")
+            .map((part: { text?: string }) => part.text ?? "")
+            .join("")
+        : "";
+
+  if (!content.trim()) {
     return NextResponse.json(
-      { error: "Last message must be from user" },
+      { error: "A user message is required" },
       { status: 400 },
     );
   }
 
-  // Forward the request to the internal NestJS streaming endpoint
   const nestResponse = await fetch(
-    `${NEST_API}/chat/conversations/${conversationId}/stream`,
+    `${NEST_API}/api/v1/chat/conversations/${conversationId}/messages`,
     {
       method: "POST",
       headers: {
@@ -48,60 +107,36 @@ export async function POST(req: NextRequest) {
         Authorization: authHeader,
         Accept: "text/event-stream",
       },
-      body: JSON.stringify({
-        message: lastMessage.content,
-        history: messages.slice(0, -1), // Send previous messages as context
-        metadata: data,
-      }),
+      body: JSON.stringify({ content }),
     },
   );
 
-  // Handle non-200 responses from the backend
   if (!nestResponse.ok) {
     const err = await nestResponse.json().catch(() => ({}));
 
-    // Rate limit handling: Extract Retry-After for the UI countdown
-    if (nestResponse.status === 429) {
-      const retryAfter = nestResponse.headers.get("retry-after") || "60";
-      return NextResponse.json(
-        { error: "Rate limit exceeded", retryAfter: parseInt(retryAfter) },
-        {
-          status: 429,
-          headers: { "Retry-After": retryAfter },
-        },
-      );
-    }
-
-    // Payment Required (Quota Exceeded)
-    if (nestResponse.status === 402) {
-      return NextResponse.json(
-        { error: "Token quota exceeded. Please upgrade your plan." },
-        { status: 402 },
-      );
-    }
-
     return NextResponse.json(
-      { error: err.message || "Backend error" },
+      {
+        error:
+          err.error ||
+          err.message ||
+          "Backend error",
+        code: err.code,
+      },
       { status: nestResponse.status },
     );
   }
 
-  /**
-   * SSE Stream Setup:
-   * - Content-Type: text/event-stream is required for browser EventSource/Fetch parsing.
-   * - Cache-Control: no-cache prevents Vercel/CDN from caching partial responses.
-   * - X-Accel-Buffering: no is critical for Nginx/Cloudflare to disable buffering.
-   */
-  return new Response(nestResponse.body, {
+  if (!nestResponse.body) {
+    return NextResponse.json({ error: "Empty stream" }, { status: 502 });
+  }
+
+  return createTextStreamResponse({
+    textStream: createBackendTextStream(nestResponse.body),
     headers: {
-      "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
     },
   });
 }
 
-// Ensure the route runs in the Node.js runtime for streaming support
 export const runtime = "nodejs";
 export const maxDuration = 60;

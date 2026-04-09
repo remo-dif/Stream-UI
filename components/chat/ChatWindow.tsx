@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { TextStreamChatTransport } from "ai";
 import { toast } from "sonner";
 import { MessageSquare } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
@@ -10,11 +10,13 @@ import { ChatInput } from "./ChatInput";
 import { TypingIndicator } from "./TypingIndicator";
 import { ChatErrorBanner } from "./ChatErrorBanner";
 import { useChatInput } from "@/hooks/useChatInput";
+import { chatApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import type { TokenUsageMetadata } from "@/types";
 
 interface ChatWindowProps {
   conversationId: string;
+  initialTitle?: string;
   onTitleChange?: (title: string) => void;
 }
 
@@ -37,12 +39,14 @@ interface ChatWindowProps {
  */
 export function ChatWindow({
   conversationId,
+  initialTitle: _initialTitle,
   onTitleChange,
 }: ChatWindowProps) {
-  const { token, user } = useAuthStore();
+  const { token } = useAuthStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageMetadata | null>(null);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
   // ─── AI SDK v5 Stream Configuration ────────────────────────────────────────
 
@@ -51,6 +55,7 @@ export function ChatWindow({
     status,
     error,
     sendMessage,
+    setMessages,
     stop,
     regenerate,
     clearError,
@@ -63,14 +68,13 @@ export function ChatWindow({
      * We use it here to dynamically inject the latest Bearer token
      * and tenant metadata without polluting the main hook state.
      */
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
+    transport: new TextStreamChatTransport({
+      api: chatApi.streamUrl(),
       headers: () => ({
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       }),
       body: () => ({
         conversationId,
-        data: { userId: user?.id, tenantId: user?.tenantId },
       }),
       // Custom fetch interceptor for error handling before the stream starts
       fetch: async (url, init) => {
@@ -86,10 +90,8 @@ export function ChatWindow({
     }),
 
     // Captured when the stream finishes successfully
-    onFinish(options) {
-      // Extract custom metadata (token usage) injected by our backend
-      const meta = options.message.metadata as TokenUsageMetadata | undefined;
-      if (meta?.totalTokens) setTokenUsage(meta);
+    onFinish() {
+      setTokenUsage(null);
     },
 
     // Global error handler for the stream
@@ -105,6 +107,30 @@ export function ChatWindow({
   const isStreaming = status === "streaming";
   const isSubmitted = status === "submitted";
   const isLoading = isStreaming || isSubmitted;
+
+  useEffect(() => {
+    if (!token) return;
+
+    const loadHistory = async () => {
+      setIsHistoryLoading(true);
+      try {
+        const history = await chatApi.getMessages(conversationId, token, 100);
+        setMessages(
+          history.map((message) => ({
+            id: message.id,
+            role: message.role,
+            parts: [{ type: "text", text: message.content }],
+          })),
+        );
+      } catch {
+        toast.error("Failed to load conversation history");
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [conversationId, token, setMessages]);
 
   // ── Controlled input via hook (AI SDK v5 no longer owns input state) ────────
   // We decouple input management to allow for better control over form events and local state
@@ -147,7 +173,11 @@ export function ChatWindow({
         ref={scrollRef}
         className="flex-1 overflow-y-auto py-4 scroll-smooth"
       >
-        {isEmpty ? (
+        {isHistoryLoading ? (
+          <div className="flex items-center justify-center h-full min-h-[40vh] text-sm text-muted-foreground">
+            Loading conversation...
+          </div>
+        ) : isEmpty ? (
           <EmptyState
             onSuggestion={(text) => {
               clearError();
@@ -235,4 +265,3 @@ function EmptyState({ onSuggestion }: { onSuggestion: (text: string) => void }) 
     </div>
   );
 }
-

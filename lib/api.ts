@@ -1,25 +1,18 @@
 import type {
-  AuthUser,
-  Conversation,
-  UsageSummary,
-  UsageLog,
-  DailyUsage,
-  AsyncJob,
   AdminUser,
-  Tenant,
+  AsyncJob,
+  AuthUser,
+  ChatMessage,
+  Conversation,
+  DailyUsage,
   PaginatedResponse,
+  Tenant,
+  UsageLog,
+  UsageSummary,
+  UserRole,
 } from "@/types";
 
-/**
- * FIX: BASE_URL is the NestJS origin only.
- * All paths below include the full /api/v1 prefix to match NestJS routes.
- * The original code was missing this prefix on every single endpoint,
- * meaning every API call would 404 in production.
- */
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
-// ─── HTTP helpers ─────────────────────────────────────────────────────────────
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 class ApiError extends Error {
   constructor(
@@ -30,14 +23,6 @@ class ApiError extends Error {
   }
 }
 
-/**
- * Core API Wrapper
- *
- * Centralized fetch utility that handles:
- * 1. Auth Header Injection: Bearer token from the auth store.
- * 2. Status Validation: Automatically throws ApiError for non-2xx responses.
- * 3. Body Parsing: Gracefully handles empty responses.
- */
 async function apiFetch<T>(
   path: string,
   options: RequestInit & { token?: string } = {},
@@ -50,7 +35,7 @@ async function apiFetch<T>(
   };
 
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -60,24 +45,16 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.message || "Request failed");
+    throw new ApiError(res.status, body.error || body.message || "Request failed");
   }
 
-  // Handle 204 No Content
-  if (res.status === 204) return undefined as unknown as T;
+  if (res.status === 204) {
+    return undefined as T;
+  }
 
   return res.json();
 }
 
-/**
- * Resilience Helper: withRetry
- *
- * Implements exponential backoff for transient failures.
- * Retries on:
- * - 429 (Rate Limit)
- * - 5xx (Server Error)
- * Does NOT retry on 4xx (Client Error) like 401 or 403.
- */
 export async function withRetry<T>(
   fn: () => Promise<T>,
   maxAttempts = 3,
@@ -85,7 +62,7 @@ export async function withRetry<T>(
 ): Promise<T> {
   let lastError: Error | undefined;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       return await fn();
     } catch (err) {
@@ -97,141 +74,408 @@ export async function withRetry<T>(
       if (!isRateLimit && !isServerError) throw err;
 
       const delay = baseDelay * Math.pow(2, attempt);
-      await new Promise((r) => setTimeout(r, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
   throw lastError;
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-// FIX: All paths now use /api/v1 prefix matching NestJS controller routes.
+type RawAuthUser = {
+  id: string;
+  email: string;
+  role: UserRole;
+  tenant_id: string;
+  is_active?: boolean;
+  metadata?: Record<string, unknown>;
+};
+
+type RawTenant = {
+  id: string;
+  name: string;
+  plan: Tenant["plan"];
+  token_quota: number;
+  tokens_used: number;
+  created_at: string;
+};
+
+type RawConversation = {
+  id: string;
+  title: string;
+  model?: string;
+  is_archived?: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type RawMessage = {
+  id: string;
+  role: ChatMessage["role"];
+  content: string;
+  tokens?: number | null;
+  created_at: string;
+};
+
+type RawUsageDashboard = {
+  quota: {
+    total: number;
+    used: number;
+    percentage: number;
+  };
+  today: {
+    tokens: number;
+  };
+  last30Days: {
+    totalTokens: number;
+    inputTokens: number;
+    outputTokens: number;
+    requestCount: number;
+  };
+};
+
+type RawUsageLog = {
+  id: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  created_at: string;
+};
+
+type RawAdminUser = {
+  id: string;
+  email: string;
+  role: UserRole;
+  tenant_id: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+type RawJob = {
+  id: string;
+  name?: string;
+  status: string;
+  progress?: number | Record<string, unknown>;
+  data?: {
+    payload?: Record<string, unknown>;
+    userId?: string;
+    tenantId?: string;
+  };
+  result?: { text?: string } | string | null;
+  failedReason?: string;
+  attemptsMade?: number;
+  opts?: {
+    attempts?: number;
+  };
+  timestamp?: number;
+  finishedOn?: number;
+};
+
+function mapTenant(raw: RawTenant): Tenant {
+  return {
+    id: raw.id,
+    name: raw.name,
+    plan: raw.plan,
+    quotaTokens: Number(raw.token_quota ?? 0),
+    usedTokens: Number(raw.tokens_used ?? 0),
+    createdAt: raw.created_at,
+  };
+}
+
+function mapAuthUser(raw: RawAuthUser, tenant: RawTenant): AuthUser {
+  const metadata = raw.metadata ?? {};
+
+  return {
+    id: raw.id,
+    email: raw.email,
+    role: raw.role,
+    tenantId: raw.tenant_id,
+    tenantName: tenant.name,
+    fullName:
+      typeof metadata.fullName === "string"
+        ? metadata.fullName
+        : typeof metadata.full_name === "string"
+          ? metadata.full_name
+          : undefined,
+    avatarUrl:
+      typeof metadata.avatarUrl === "string"
+        ? metadata.avatarUrl
+        : typeof metadata.avatar_url === "string"
+          ? metadata.avatar_url
+          : undefined,
+    isActive: raw.is_active,
+  };
+}
+
+function mapConversation(raw: RawConversation): Conversation {
+  return {
+    id: raw.id,
+    title: raw.title,
+    model: raw.model ?? "claude-3-5-sonnet-20241022",
+    isArchived: raw.is_archived ?? false,
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+  };
+}
+
+function mapMessage(raw: RawMessage): ChatMessage {
+  return {
+    id: raw.id,
+    role: raw.role,
+    content: raw.content,
+    tokens: raw.tokens ?? null,
+    createdAt: raw.created_at,
+  };
+}
+
+function mapUsageSummary(raw: RawUsageDashboard): UsageSummary {
+  return {
+    totalTokens: raw.last30Days.totalTokens,
+    promptTokens: raw.last30Days.inputTokens,
+    completionTokens: raw.last30Days.outputTokens,
+    totalRequests: raw.last30Days.requestCount,
+    avgResponseTime: 0,
+    quotaUsedPercent: raw.quota.percentage,
+    quotaLimit: raw.quota.total,
+    usedTokens: raw.quota.used,
+    todayTokens: raw.today.tokens,
+  };
+}
+
+function mapUsageLog(raw: RawUsageLog): UsageLog {
+  return {
+    id: raw.id,
+    model: raw.model,
+    promptTokens: raw.input_tokens,
+    completionTokens: raw.output_tokens,
+    totalTokens: raw.total_tokens,
+    latencyMs: null,
+    createdAt: raw.created_at,
+  };
+}
+
+function stringifyJobPayload(payload?: Record<string, unknown>): string {
+  if (!payload) return "Background job";
+
+  if (typeof payload.text === "string" && payload.text.trim()) {
+    return payload.text;
+  }
+
+  if (typeof payload.prompt === "string" && payload.prompt.trim()) {
+    return payload.prompt;
+  }
+
+  return JSON.stringify(payload);
+}
+
+function mapJob(raw: RawJob): AsyncJob {
+  const progress =
+    typeof raw.progress === "number"
+      ? raw.progress
+      : typeof raw.progress?.valueOf() === "number"
+        ? Number(raw.progress.valueOf())
+        : 0;
+
+  return {
+    id: String(raw.id),
+    type: raw.name ?? "ai-processing",
+    status: (raw.status as AsyncJob["status"]) ?? "waiting",
+    prompt: stringifyJobPayload(raw.data?.payload),
+    result:
+      typeof raw.result === "string"
+        ? raw.result
+        : typeof raw.result?.text === "string"
+          ? raw.result.text
+          : undefined,
+    error: raw.failedReason ?? undefined,
+    progress,
+    createdAt: raw.timestamp ? new Date(raw.timestamp).toISOString() : new Date().toISOString(),
+    completedAt: raw.finishedOn ? new Date(raw.finishedOn).toISOString() : undefined,
+    attempts: raw.attemptsMade ?? 0,
+    maxAttempts: raw.opts?.attempts ?? 1,
+  };
+}
 
 export const authApi = {
-  // FIX: was /auth/me — endpoint is GET /api/v1/auth/user
-  me: (token: string): Promise<AuthUser> =>
-    apiFetch("/api/v1/auth/user", { token }),
+  async me(token: string): Promise<AuthUser> {
+    const [profile, tenant] = await Promise.all([
+      apiFetch<RawAuthUser>("/api/v1/auth/user", { token }),
+      apiFetch<RawTenant>("/api/v1/tenants/current", { token }),
+    ]);
 
-  // FIX: was /auth/sign-in — NestJS route is POST /api/v1/auth/signin
-  signIn: (email: string, password: string) =>
-    apiFetch<{ access_token: string; user: AuthUser }>("/api/v1/auth/signin", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
+    return mapAuthUser(profile, tenant);
+  },
 
-  // FIX: was /auth/sign-up — NestJS route is POST /api/v1/auth/signup
   signUp: (email: string, password: string, tenantId?: string) =>
-    apiFetch<{ access_token: string; user: AuthUser }>("/api/v1/auth/signup", {
-      method: "POST",
-      body: JSON.stringify({ email, password, tenantId }),
-    }),
+    apiFetch<{ user: { id: string; email: string }; session: unknown }>(
+      "/api/v1/auth/signup",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password, tenantId }),
+      },
+    ),
 
   signOut: (token: string) =>
     apiFetch<void>("/api/v1/auth/signout", { method: "POST", token }),
-
-  refresh: (refreshToken: string) =>
-    apiFetch<{ access_token: string }>("/api/v1/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({ refreshToken }),
-    }),
 };
 
-// ─── Chat ─────────────────────────────────────────────────────────────────────
-
 export const chatApi = {
-  listConversations: (token: string): Promise<Conversation[]> =>
-    apiFetch("/api/v1/chat/conversations", { token }),
+  async listConversations(token: string): Promise<Conversation[]> {
+    const data = await apiFetch<RawConversation[]>("/api/v1/chat/conversations", { token });
+    return data.map(mapConversation);
+  },
 
-  getConversation: (id: string, token: string): Promise<Conversation> =>
-    apiFetch(`/api/v1/chat/conversations/${id}`, { token }),
+  async getConversation(id: string, token: string): Promise<Conversation> {
+    const data = await apiFetch<RawConversation>(`/api/v1/chat/conversations/${id}`, { token });
+    return mapConversation(data);
+  },
 
-  createConversation: (title: string, token: string): Promise<Conversation> =>
-    apiFetch("/api/v1/chat/conversations", {
+  async createConversation(title: string, token: string): Promise<Conversation> {
+    const data = await apiFetch<RawConversation>("/api/v1/chat/conversations", {
       method: "POST",
       body: JSON.stringify({ title }),
       token,
-    }),
+    });
+    return mapConversation(data);
+  },
 
   deleteConversation: (id: string, token: string): Promise<void> =>
     apiFetch(`/api/v1/chat/conversations/${id}`, { method: "DELETE", token }),
 
-  getMessages: (conversationId: string, token: string, limit = 50, before?: string) =>
-    apiFetch<any[]>(
+  async getMessages(
+    conversationId: string,
+    token: string,
+    limit = 50,
+    before?: string,
+  ): Promise<ChatMessage[]> {
+    const data = await apiFetch<RawMessage[]>(
       `/api/v1/chat/conversations/${conversationId}/messages?limit=${limit}${before ? `&before=${before}` : ""}`,
       { token },
-    ),
+    );
+    return data.map(mapMessage);
+  },
 
-  /**
-   * FIX: was /chat/conversations/:id/stream — NestJS SSE endpoint is
-   * POST /api/v1/chat/conversations/:id/messages
-   */
-  streamUrl: (conversationId: string) =>
-    `${BASE_URL}/api/v1/chat/conversations/${conversationId}/messages`,
+  streamUrl: () => "/api/chat",
 };
 
-// ─── Usage ────────────────────────────────────────────────────────────────────
-
 export const usageApi = {
-  summary: (token: string): Promise<UsageSummary> =>
-    apiFetch("/api/v1/usage/summary", { token }),
+  async summary(token: string): Promise<UsageSummary> {
+    const data = await apiFetch<RawUsageDashboard>("/api/v1/usage/dashboard", { token });
+    return mapUsageSummary(data);
+  },
 
-  logs: (token: string, page = 1, limit = 20): Promise<PaginatedResponse<UsageLog>> =>
-    apiFetch(`/api/v1/usage/logs?page=${page}&limit=${limit}`, { token }),
+  async logs(token: string, page = 1, limit = 20): Promise<PaginatedResponse<UsageLog>> {
+    const data = await apiFetch<{
+      logs: RawUsageLog[];
+      page: number;
+      limit: number;
+      total: number;
+    }>(`/api/v1/usage/logs?page=${page}&limit=${limit}`, { token });
+
+    return {
+      data: data.logs.map(mapUsageLog),
+      page: data.page,
+      limit: data.limit,
+      total: data.total,
+    };
+  },
 
   daily: (token: string, days = 30): Promise<DailyUsage[]> =>
     apiFetch(`/api/v1/usage/daily?days=${days}`, { token }),
 };
 
-// ─── Jobs ─────────────────────────────────────────────────────────────────────
-
 export const jobsApi = {
   submit: (prompt: string, token: string): Promise<{ jobId: string }> =>
-    apiFetch("/api/v1/jobs", {
+    apiFetch("/api/v1/jobs/submit", {
       method: "POST",
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({
+        jobType: "analyze",
+        payload: { text: prompt },
+      }),
       token,
     }),
 
-  status: (jobId: string, token: string): Promise<AsyncJob> =>
-    apiFetch(`/api/v1/jobs/${jobId}`, { token }),
+  async status(jobId: string, token: string): Promise<AsyncJob> {
+    const data = await apiFetch<RawJob>(`/api/v1/jobs/${jobId}`, { token });
+    return mapJob(data);
+  },
 
-  list: (token: string, page = 1, limit = 10): Promise<PaginatedResponse<AsyncJob>> =>
-    apiFetch(`/api/v1/jobs?page=${page}&limit=${limit}`, { token }),
+  async list(token: string, page = 1, limit = 10): Promise<PaginatedResponse<AsyncJob>> {
+    const data = await apiFetch<RawJob[]>(`/api/v1/jobs?limit=${limit}`, { token });
+    return {
+      data: data.map(mapJob),
+      total: data.length,
+      page,
+      limit,
+    };
+  },
 };
-
-// ─── Admin ────────────────────────────────────────────────────────────────────
 
 export const adminApi = {
-  listUsers: (token: string, page = 1, limit = 20): Promise<PaginatedResponse<AdminUser>> =>
-    apiFetch(`/api/v1/admin/users?page=${page}&limit=${limit}`, { token }),
+  async listUsers(token: string): Promise<{ data: AdminUser[] }> {
+    const [usersResponse, tenant] = await Promise.all([
+      apiFetch<{ users: RawAdminUser[] }>("/api/v1/admin/users", { token }),
+      apiFetch<RawTenant>("/api/v1/tenants/current", { token }),
+    ]);
 
-  updateUserRole: (userId: string, role: string, token: string): Promise<AdminUser> =>
-    apiFetch(`/api/v1/admin/users/${userId}/role`, {
-      method: "PATCH",
-      body: JSON.stringify({ role }),
-      token,
-    }),
+    return {
+      data: usersResponse.users.map((user) => ({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenant_id,
+        tenantName: tenant.name,
+        totalTokens: 0,
+        lastActive: null,
+        isActive: user.is_active,
+        createdAt: user.created_at,
+      })),
+    };
+  },
+
+  async updateUserRole(userId: string, role: UserRole, token: string): Promise<AdminUser> {
+    const [user, tenant] = await Promise.all([
+      apiFetch<RawAdminUser>(`/api/v1/admin/users/${userId}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+        token,
+      }),
+      apiFetch<RawTenant>("/api/v1/tenants/current", { token }),
+    ]);
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenant_id,
+      tenantName: tenant.name,
+      totalTokens: 0,
+      lastActive: null,
+      isActive: user.is_active,
+      createdAt: user.created_at,
+    };
+  },
 
   deactivateUser: (userId: string, token: string): Promise<void> =>
-    apiFetch(`/api/v1/admin/users/${userId}/deactivate`, {
-      method: "POST",
+    apiFetch(`/api/v1/admin/users/${userId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ isActive: false }),
       token,
     }),
 };
 
-// ─── Tenants ──────────────────────────────────────────────────────────────────
-
 export const tenantsApi = {
-  get: (id: string, token: string): Promise<Tenant> =>
-    apiFetch(`/api/v1/tenants/${id}`, { token }),
-
-  list: (token: string): Promise<Tenant[]> =>
-    apiFetch("/api/v1/tenants", { token }),
+  async current(token: string): Promise<Tenant> {
+    const data = await apiFetch<RawTenant>("/api/v1/tenants/current", { token });
+    return mapTenant(data);
+  },
 
   create: (name: string, token: string): Promise<Tenant> =>
-    apiFetch("/api/v1/tenants", {
+    apiFetch<RawTenant>("/api/v1/tenants", {
       method: "POST",
       body: JSON.stringify({ name }),
       token,
-    }),
+    }).then(mapTenant),
 };
+
+export { ApiError };

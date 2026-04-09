@@ -20,14 +20,14 @@ import { toast } from "sonner";
 
 const ROLE_ICONS: Record<UserRole, React.ElementType> = {
   admin: ShieldAlert,
+  superadmin: ShieldCheck,
   user: Shield,
-  viewer: ShieldCheck,
 };
 
 const ROLE_COLORS: Record<UserRole, string> = {
   admin: "text-destructive bg-destructive/10 border-destructive/20",
+  superadmin: "text-violet-500 bg-violet-500/10 border-violet-500/20",
   user: "text-primary bg-primary/10 border-primary/20",
-  viewer: "text-muted-foreground bg-muted border-border",
 };
 
 function RoleBadge({ role }: { role: UserRole }) {
@@ -58,7 +58,7 @@ function RoleSelector({
   const [open, setOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const roles: UserRole[] = ["admin", "user", "viewer"];
+  const roles: UserRole[] = ["admin", "user", "superadmin"];
 
   const handleSelect = async (role: UserRole) => {
     if (role === currentRole || !token) return;
@@ -120,7 +120,7 @@ function RoleSelector({
  * manage users across all tenants.
  * 
  * Key Features:
- * 1. Role Management: Allows admins to update user roles (admin, user, viewer).
+ * 1. Role Management: Allows admins to update user roles (admin, user, superadmin).
  * 2. User Lifecycle: Supports deactivating users to revoke access.
  * 3. Visibility: Displays aggregate token usage and last active timestamps.
  * 4. Security: Implements a client-side guard to prevent non-admins from viewing the content.
@@ -171,7 +171,7 @@ export default function AdminPage() {
   }, [search, users]);
 
   // Client-side guard: only users with the 'admin' role can access this page
-  if (user && user.role !== "admin") {
+  if (user && user.role !== "admin" && user.role !== "superadmin") {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center px-6">
         <ShieldAlert className="w-12 h-12 text-destructive/40 mb-4" />
@@ -288,7 +288,7 @@ export default function AdminPage() {
                         {formatTokens(u.totalTokens)}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
-                        {formatDate(u.lastActive)}
+                        {u.lastActive ? formatDate(u.lastActive) : "—"}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -371,7 +371,7 @@ const MOCK_USERS: AdminUser[] = [
   {
     id: "u4",
     email: "dave@startup.io",
-    role: "viewer",
+    role: "superadmin",
     tenantId: "t2",
     tenantName: "Startup IO",
     totalTokens: 1200,
