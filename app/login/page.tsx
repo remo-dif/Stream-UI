@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
-import { useRedirectIfAuthed } from "@/hooks/useAuth";
+import { useAuthInit, useRedirectIfAuthed } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
  * 4. Redirection: Automatically redirects already-authenticated users away from this page.
  */
 export default function LoginPage() {
+  useAuthInit();
   useRedirectIfAuthed();
 
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");

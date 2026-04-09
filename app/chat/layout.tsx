@@ -2,6 +2,7 @@
 
 import { useAuthInit } from "@/hooks/useAuth";
 import { AppSidebar } from "@/components/AppSidebar";
+import { usePathname } from "next/navigation";
 
 /**
  * ChatLayout Component
@@ -15,10 +16,14 @@ export default function ChatLayout({
   children: React.ReactNode;
 }) {
   useAuthInit();
+  const pathname = usePathname();
+  const activeConversationId = pathname.startsWith("/chat/")
+    ? pathname.split("/")[2]
+    : undefined;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <AppSidebar />
+      <AppSidebar activeConversationId={activeConversationId} />
       <main className="flex-1 overflow-hidden">{children}</main>
     </div>
   );

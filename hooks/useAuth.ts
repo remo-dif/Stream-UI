@@ -3,8 +3,15 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { authApi } from "@/lib/api";
+import { ApiError, authApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+
+function isInvalidSessionError(error: unknown) {
+  return (
+    error instanceof ApiError &&
+    (error.statusCode === 401 || error.statusCode === 403)
+  );
+}
 
 /**
  * Initialises auth state from Supabase session and keeps it in sync.
@@ -27,8 +34,12 @@ export function useAuthInit() {
         try {
           const user = await authApi.me(session.access_token);
           setUser(user);
-        } catch {
-          logout();
+        } catch (error) {
+          if (isInvalidSessionError(error)) {
+            logout();
+          } else {
+            setUser(null);
+          }
         }
       } else {
         logout();
@@ -52,8 +63,12 @@ export function useAuthInit() {
         try {
           const user = await authApi.me(session.access_token);
           setUser(user);
-        } catch {
-          logout();
+        } catch (error) {
+          if (isInvalidSessionError(error)) {
+            logout();
+          } else {
+            setUser(null);
+          }
         }
       }
       setLoading(false);
@@ -67,30 +82,30 @@ export function useAuthInit() {
  * Redirect to /login if not authenticated.
  */
 export function useRequireAuth(redirectTo = "/login") {
-  const { user, isLoading } = useAuthStore();
+  const { user, token, isLoading } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !token) {
       router.replace(redirectTo);
     }
-  }, [user, isLoading, router, redirectTo]);
+  }, [user, token, isLoading, router, redirectTo]);
 
-  return { user, isLoading };
+  return { user, token, isLoading };
 }
 
 /**
  * Redirect to /chat if already authenticated.
  */
 export function useRedirectIfAuthed(redirectTo = "/chat") {
-  const { user, isLoading } = useAuthStore();
+  const { user, token, isLoading } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && (user || token)) {
       router.replace(redirectTo);
     }
-  }, [user, isLoading, router, redirectTo]);
+  }, [user, token, isLoading, router, redirectTo]);
 
-  return { user, isLoading };
+  return { user, token, isLoading };
 }
