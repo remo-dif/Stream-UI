@@ -39,9 +39,10 @@ interface ChatWindowProps {
  */
 export function ChatWindow({
   conversationId,
-  initialTitle: _initialTitle,
+  initialTitle,
   onTitleChange,
 }: ChatWindowProps) {
+  void initialTitle;
   const { token } = useAuthStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageMetadata | null>(null);
