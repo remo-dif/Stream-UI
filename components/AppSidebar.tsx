@@ -31,22 +31,6 @@ interface AppSidebarProps {
   activeConversationId?: string;
 }
 
-/**
- * AppSidebar Component
- * 
- * The main navigation sidebar for the application. It manages the conversation list,
- * navigation links, and user-specific actions like logout and theme toggling.
- * 
- * Key Features:
- * 1. Conversation Management: Fetches, creates, and deletes conversations using the chatApi.
- * 2. Responsive Design: Supports a collapsed state for better space utilization.
- * 3. Dynamic Navigation: Renders navigation items based on the user's role (e.g., Admin link).
- * 4. User Integration: Displays user initials and provides logout functionality via Zustand store.
- * 
- * Props:
- * @param {string} activeConversationId - The ID of the currently active conversation for highlighting.
- * @param {(id: string) => void} onConversationSelect - Callback triggered when a conversation is selected.
- */
 export function AppSidebar({
   activeConversationId,
 }: AppSidebarProps) {
@@ -59,8 +43,6 @@ export function AppSidebar({
   const pathname = usePathname();
   const router = useRouter();
 
-  // ─── Data Fetching ─────────────────────────────────────────────────────────
-
   const loadConversations = useCallback(async () => {
     if (!token) return;
     setIsLoadingConvs(true);
@@ -68,7 +50,7 @@ export function AppSidebar({
       const data = await chatApi.listConversations(token);
       setConversations(data);
     } catch {
-      // silently fail – conversations may be empty
+      // Silently fail to keep the shell usable during transient API issues.
     } finally {
       setIsLoadingConvs(false);
     }
@@ -81,8 +63,6 @@ export function AppSidebar({
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // ─── Actions ───────────────────────────────────────────────────────────────
 
   const handleNewChat = async () => {
     if (!token) return;
@@ -105,7 +85,6 @@ export function AppSidebar({
     try {
       await chatApi.deleteConversation(id, token);
       setConversations((prev) => prev.filter((c) => c.id !== id));
-      // Redirect if the deleted conversation was the active one
       if (activeConversationId === id) router.push("/chat");
     } catch {
       toast.error("Failed to delete conversation");
@@ -127,10 +106,9 @@ export function AppSidebar({
   };
 
   const navItems = [
-    { href: "/chat", icon: MessageSquare, label: "Chat", exact: false },
+    { href: "/chat", icon: MessageSquare, label: "Chat" },
     { href: "/dashboard", icon: BarChart2, label: "Usage Dashboard" },
     { href: "/jobs", icon: Briefcase, label: "Async Jobs" },
-    // Only show Admin link if user has the admin role
     ...(user?.role === "admin" || user?.role === "superadmin"
       ? [{ href: "/admin", icon: Users, label: "Admin" }]
       : []),
@@ -139,109 +117,125 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "flex flex-col h-screen bg-sidebar border-r border-sidebar-border transition-all duration-200 shrink-0",
-        collapsed ? "w-16" : "w-64",
+        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur transition-all duration-200",
+        collapsed ? "w-[78px]" : "w-72 xl:w-80",
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-4 border-b border-sidebar-border">
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <Cpu className="w-4 h-4 text-primary-foreground" />
+      <div className="border-b border-sidebar-border px-3 py-4">
+        <div className="flex items-center justify-between gap-2">
+          {!collapsed && (
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 ring-1 ring-primary/20">
+                <Cpu className="h-4 w-4 text-sidebar-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-sidebar-foreground">
+                  StreamAI
+                </p>
+                <p className="text-xs text-sidebar-foreground/45">
+                  AI workspace
+                </p>
+              </div>
             </div>
-            <span className="font-semibold text-sidebar-foreground text-sm">
-              StreamAI
-            </span>
-          </div>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-md hover:bg-sidebar-accent text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors ml-auto"
-        >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
           )}
-        </button>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="ml-auto rounded-xl p-2 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        {!collapsed && (
+          <p className="mt-4 rounded-2xl border border-sidebar-border bg-sidebar-accent/40 px-3 py-2 text-xs leading-5 text-sidebar-foreground/60">
+            Keep conversations, usage, and admin controls in one calm
+            workspace.
+          </p>
+        )}
       </div>
 
-      {/* New chat button */}
-      <div className="px-2 py-2">
+      <div className="px-3 py-3">
         <button
           onClick={handleNewChat}
+          aria-label="Start new chat"
           className={cn(
-            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-sidebar-primary transition-colors text-sm font-medium",
+            "flex w-full items-center gap-2.5 rounded-2xl border border-primary/15 bg-primary/12 px-3 py-3 text-sm font-medium text-sidebar-primary transition-all hover:border-primary/30 hover:bg-primary/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
             collapsed && "justify-center",
           )}
         >
-          <Plus className="w-4 h-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           {!collapsed && <span>New Chat</span>}
         </button>
       </div>
 
-      {/* Nav items */}
-      <nav className="px-2 space-y-0.5">
+      <nav className="space-y-1 px-3" aria-label="Primary navigation">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive = pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors",
+                "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-foreground font-medium"
-                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
+                  ? "bg-sidebar-accent text-sidebar-foreground shadow-sm"
+                  : "text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                 collapsed && "justify-center",
               )}
             >
-              <Icon className="w-4 h-4 shrink-0" />
+              <Icon className="h-4 w-4 shrink-0" />
               {!collapsed && <span>{label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      {/* Conversations list */}
       {!collapsed && (
-        <div className="flex-1 overflow-y-auto px-2 py-2 mt-2">
-          <p className="text-xs font-medium text-sidebar-foreground/40 px-2.5 mb-1.5 uppercase tracking-wider">
+        <div className="mt-2 flex-1 overflow-y-auto px-3 pb-3">
+          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/35">
             Conversations
           </p>
           {isLoadingConvs ? (
-            <div className="space-y-1.5 px-2.5">
+            <div className="space-y-2 px-1">
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-7 rounded bg-sidebar-accent animate-pulse"
+                  className="h-10 rounded-2xl bg-sidebar-accent animate-pulse"
                 />
               ))}
             </div>
           ) : conversations.length === 0 ? (
-            <p className="text-xs text-sidebar-foreground/40 px-2.5 py-2">
-              No conversations yet
-            </p>
+            <div className="rounded-2xl border border-dashed border-sidebar-border bg-sidebar-accent/25 px-3 py-4 text-xs leading-5 text-sidebar-foreground/45">
+              No conversations yet. Start one from the button above.
+            </div>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {conversations.map((conv) => (
                 <Link
                   key={conv.id}
                   href={`/chat/${conv.id}`}
                   className={cn(
-                    "group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors",
+                    "group flex items-center justify-between rounded-2xl px-3 py-2 text-sm transition-colors",
                     activeConversationId === conv.id
-                      ? "bg-sidebar-accent text-sidebar-foreground"
-                      : "text-sidebar-foreground/55 hover:text-sidebar-foreground hover:bg-sidebar-accent/40",
+                      ? "bg-sidebar-accent text-sidebar-foreground shadow-sm"
+                      : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground",
                   )}
                 >
-                  <span className="truncate">{truncate(conv.title, 30)}</span>
+                  <span className="truncate pr-2">
+                    {truncate(conv.title, 34)}
+                  </span>
                   <button
                     onClick={(e) => handleDeleteConversation(e, conv.id)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:text-destructive transition-all"
+                    aria-label={`Delete conversation ${conv.title}`}
+                    className="rounded-lg p-1 text-sidebar-foreground/40 opacity-0 transition-all hover:bg-sidebar-background/60 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="h-3 w-3" />
                   </button>
                 </Link>
               ))}
@@ -250,53 +244,49 @@ export function AppSidebar({
         </div>
       )}
 
-      {/* Footer */}
-      <div className="border-t border-sidebar-border p-2 space-y-1">
-        {/* Quota indicator */}
+      <div className="space-y-1 border-t border-sidebar-border p-3">
         <QuotaIndicator collapsed={collapsed} />
 
-        {/* Theme toggle */}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          aria-label="Toggle theme"
           className={cn(
-            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors",
+            "flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
             collapsed && "justify-center",
           )}
         >
           {mounted && (theme === "light" ? (
-            <Sun className="w-4 h-4 shrink-0" />
+            <Sun className="h-4 w-4 shrink-0" />
           ) : (
-            <Moon className="w-4 h-4 shrink-0" />
+            <Moon className="h-4 w-4 shrink-0" />
           ))}
           {!collapsed && <span>Toggle theme</span>}
         </button>
 
-        {/* Settings */}
         <Link
           href="/settings"
           className={cn(
-            "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors",
+            "flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
             collapsed && "justify-center",
           )}
         >
-          <Settings className="w-4 h-4 shrink-0" />
+          <Settings className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Settings</span>}
         </Link>
 
-        {/* User */}
         {user && (
           <div
             className={cn(
-              "flex items-center gap-2.5 px-2.5 py-2",
+              "flex items-center gap-2.5 rounded-2xl border border-sidebar-border bg-sidebar-accent/20 px-3 py-3",
               collapsed && "justify-center",
             )}
           >
-            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
               {getInitials(user.fullName, user.email)}
             </div>
             {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-sidebar-foreground truncate">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-sidebar-foreground">
                   {user.fullName || user.email}
                 </p>
                 <p className="text-xs text-sidebar-foreground/40 capitalize">
@@ -307,9 +297,10 @@ export function AppSidebar({
             {!collapsed && (
               <button
                 onClick={handleLogout}
-                className="p-1 rounded hover:bg-sidebar-accent text-sidebar-foreground/40 hover:text-destructive transition-colors"
+                aria-label="Log out"
+                className="rounded-xl p-2 text-sidebar-foreground/40 transition-colors hover:bg-sidebar-background/60 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="h-3.5 w-3.5" />
               </button>
             )}
           </div>

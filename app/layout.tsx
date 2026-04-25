@@ -15,22 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StreamAI — Multi-Tenant AI Platform",
+  title: "StreamAI - Multi-Tenant AI Platform",
   description:
     "Production-grade AI chat platform with streaming, token tracking, and role-based access.",
 };
 
-/**
- * RootLayout Component
- * 
- * The foundational layout for the entire application.
- * 
- * Key Architectural Decisions:
- * 1. Font Integration: Uses Next.js Font (Geist) for optimized typography.
- * 2. Theme Management: Wraps the app with `next-themes` (ThemeProvider) for dark mode support.
- * 3. Global Notifications: Initializes the `sonner` Toaster for consistent toast messages.
- * 4. Hydration: suppressHydrationWarning is used to prevent issues with theme-switching on the server.
- */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} app-shell font-[family-name:var(--font-geist-sans)]`}
       >
         <ThemeProvider
           attribute="class"
@@ -55,6 +44,8 @@ export default function RootLayout({
                 background: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
                 color: "hsl(var(--foreground))",
+                borderRadius: "1rem",
+                boxShadow: "0 20px 60px -40px rgba(15, 23, 42, 0.55)",
               },
             }}
           />

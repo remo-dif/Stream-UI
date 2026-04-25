@@ -186,7 +186,7 @@ export function ChatWindow({
             }}
           />
         ) : (
-          <div className="max-w-3xl mx-auto">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6">
             {messages.map((msg, i) => (
               <ChatMessage
                 key={msg.id}
@@ -214,7 +214,7 @@ export function ChatWindow({
       />
 
       {/* ── Input ───────────────────────────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto w-full">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-4 sm:px-6">
         <ChatInput
           input={input}
           isLoading={isLoading}
@@ -244,20 +244,24 @@ function EmptyState({ onSuggestion }: { onSuggestion: (text: string) => void }) 
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[60vh] px-6 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-        <MessageSquare className="w-7 h-7 text-primary" />
+    <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
+      <span className="mb-4 rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        Start here
+      </span>
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-primary/10">
+        <MessageSquare className="h-7 w-7 text-primary" />
       </div>
-      <h2 className="text-xl font-semibold mb-1">How can I help you?</h2>
-      <p className="text-muted-foreground text-sm mb-8">
-        Start a conversation or pick a suggestion below
+      <h2 className="mb-2 text-2xl font-semibold">How can I help you?</h2>
+      <p className="mb-8 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
+        Start with a prompt or choose one of these suggestions to see the
+        streaming workflow in action.
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl w-full">
+      <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
         {suggestions.map((s) => (
           <button
             key={s}
             onClick={() => onSuggestion(s)}
-            className="p-3 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/30 text-left text-sm text-muted-foreground hover:text-foreground transition-all duration-150"
+            className="surface-muted p-4 text-left text-sm leading-6 text-muted-foreground transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {s}
           </button>

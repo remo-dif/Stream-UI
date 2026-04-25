@@ -44,9 +44,9 @@ export function QuotaIndicator({ collapsed }: { collapsed: boolean }) {
       <Link
         href="/dashboard"
         className={cn(
-          "flex items-center justify-center p-2 rounded-lg transition-colors",
+          "flex items-center justify-center rounded-2xl p-2.5 transition-colors",
           status !== "ok"
-            ? "text-amber-500 hover:bg-sidebar-accent"
+            ? "text-amber-400 hover:bg-sidebar-accent"
             : "text-muted-foreground/40 hover:bg-sidebar-accent",
         )}
         title={`Quota: ${pct.toFixed(1)}%`}
@@ -59,10 +59,10 @@ export function QuotaIndicator({ collapsed }: { collapsed: boolean }) {
   return (
     <Link
       href="/dashboard"
-      className="px-2.5 py-2 rounded-lg hover:bg-sidebar-accent transition-colors block"
+      className="block rounded-2xl border border-sidebar-border bg-sidebar-accent/20 px-3 py-3 transition-colors hover:bg-sidebar-accent/40"
     >
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs text-sidebar-foreground/50">Token quota</span>
+        <span className="text-xs uppercase tracking-[0.18em] text-sidebar-foreground/50">Token quota</span>
         <span className={cn("text-xs font-medium tabular-nums", textColors[status])}>
           {pct.toFixed(1)}%
         </span>

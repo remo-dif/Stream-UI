@@ -65,7 +65,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     );
@@ -115,18 +115,21 @@ export default function DashboardPage() {
   }));
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto w-full px-6 py-6 space-y-6">
+    <section className="flex h-full flex-col overflow-y-auto">
+      <div className="page-shell max-w-5xl space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold">Usage Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
+        <header className="page-header">
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Insights
+          </span>
+          <h1 className="page-title">Usage Dashboard</h1>
+          <p className="page-subtitle">
             Token consumption and request analytics for the last 30 days
           </p>
-        </div>
+        </header>
 
         {/* Quota bar */}
-        <div className="bg-card border border-border rounded-2xl p-4">
+        <div className="surface-panel p-4 sm:p-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Quota Usage</span>
             <span className="text-sm text-muted-foreground">
@@ -151,22 +154,22 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map(({ label, value, icon: Icon, sub, color, bg }) => (
-            <div key={label} className="bg-card border border-border rounded-2xl p-4">
-              <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center mb-3", bg)}>
-                <Icon className={cn("w-4 h-4", color)} />
+            <article key={label} className="metric-card">
+              <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-2xl", bg)}>
+                <Icon className={cn("h-4 w-4", color)} />
               </div>
-              <p className="text-2xl font-bold">{value}</p>
-              <p className="text-xs font-medium text-muted-foreground mt-0.5">{label}</p>
-              <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">{sub}</p>
-            </div>
+              <p className="text-2xl font-semibold">{value}</p>
+              <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+              <p className="mt-2 text-sm text-muted-foreground/80">{sub}</p>
+            </article>
           ))}
         </div>
 
         {/* Token trend chart */}
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-semibold text-sm mb-4">Daily Token Usage</h2>
+        <div className="surface-panel p-5 sm:p-6">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Daily Token Usage</h2>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <defs>
@@ -210,8 +213,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Requests bar chart */}
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-semibold text-sm mb-4">Daily Requests</h2>
+        <div className="surface-panel p-5 sm:p-6">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Daily Requests</h2>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -245,7 +248,7 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

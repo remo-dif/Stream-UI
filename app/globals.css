@@ -4,74 +4,74 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 99%;
-    --card-foreground: 222 47% 11%;
+    --background: 210 33% 98%;
+    --foreground: 222 33% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 33% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 243 75% 59%;
+    --popover-foreground: 222 33% 12%;
+    --primary: 201 94% 42%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 243 75% 95%;
-    --accent-foreground: 243 75% 40%;
+    --secondary: 210 33% 95%;
+    --secondary-foreground: 222 33% 12%;
+    --muted: 210 25% 94%;
+    --muted-foreground: 215 15% 42%;
+    --accent: 199 89% 93%;
+    --accent-foreground: 200 88% 28%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 243 75% 59%;
-    --radius: 0.75rem;
-    --chart-1: 243 75% 59%;
-    --chart-2: 262 83% 58%;
-    --chart-3: 291 64% 42%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 172 66% 50%;
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 90%;
-    --sidebar-primary: 243 75% 65%;
+    --border: 214 28% 88%;
+    --input: 214 28% 88%;
+    --ring: 201 94% 42%;
+    --radius: 1rem;
+    --chart-1: 201 94% 42%;
+    --chart-2: 174 84% 38%;
+    --chart-3: 222 75% 54%;
+    --chart-4: 31 91% 53%;
+    --chart-5: 343 78% 55%;
+    --sidebar-background: 222 46% 10%;
+    --sidebar-foreground: 210 22% 92%;
+    --sidebar-primary: 199 95% 63%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 16%;
-    --sidebar-accent-foreground: 210 40% 90%;
-    --sidebar-border: 222 47% 18%;
-    --sidebar-ring: 243 75% 59%;
+    --sidebar-accent: 222 35% 15%;
+    --sidebar-accent-foreground: 210 22% 92%;
+    --sidebar-border: 222 28% 18%;
+    --sidebar-ring: 199 95% 63%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 92%;
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 92%;
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 92%;
-    --primary: 243 75% 65%;
+    --background: 222 43% 7%;
+    --foreground: 210 20% 92%;
+    --card: 222 30% 10%;
+    --card-foreground: 210 20% 92%;
+    --popover: 222 30% 10%;
+    --popover-foreground: 210 20% 92%;
+    --primary: 199 89% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 222 47% 14%;
-    --secondary-foreground: 210 40% 80%;
-    --muted: 222 47% 12%;
-    --muted-foreground: 215 16% 55%;
-    --accent: 243 75% 18%;
-    --accent-foreground: 243 75% 75%;
+    --secondary: 222 24% 15%;
+    --secondary-foreground: 210 20% 84%;
+    --muted: 222 24% 13%;
+    --muted-foreground: 214 15% 62%;
+    --accent: 199 74% 17%;
+    --accent-foreground: 194 97% 78%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 222 47% 16%;
-    --input: 222 47% 14%;
-    --ring: 243 75% 65%;
-    --chart-1: 243 75% 65%;
-    --chart-2: 262 83% 68%;
-    --chart-3: 291 64% 62%;
-    --chart-4: 38 92% 60%;
-    --chart-5: 172 66% 60%;
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 210 40% 80%;
-    --sidebar-primary: 243 75% 65%;
+    --border: 222 20% 18%;
+    --input: 222 20% 18%;
+    --ring: 199 89% 60%;
+    --chart-1: 199 89% 60%;
+    --chart-2: 174 84% 48%;
+    --chart-3: 222 75% 64%;
+    --chart-4: 31 91% 63%;
+    --chart-5: 343 78% 65%;
+    --sidebar-background: 222 43% 6%;
+    --sidebar-foreground: 210 20% 84%;
+    --sidebar-primary: 199 89% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 10%;
-    --sidebar-accent-foreground: 210 40% 80%;
-    --sidebar-border: 222 47% 12%;
-    --sidebar-ring: 243 75% 65%;
+    --sidebar-accent: 222 24% 12%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 222 20% 16%;
+    --sidebar-ring: 199 89% 60%;
   }
 }
 
@@ -79,8 +79,66 @@
   * {
     @apply border-border;
   }
+  html {
+    @apply scroll-smooth;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-foreground;
+    background-image:
+      radial-gradient(circle at top, hsl(var(--accent) / 0.45), transparent 28rem),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  }
+  h1, h2, h3, h4 {
+    @apply tracking-tight text-balance;
+  }
+  p {
+    @apply text-pretty;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen bg-background;
+  }
+
+  .page-shell {
+    @apply mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-5 sm:px-6 sm:py-6 lg:px-8;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-2;
+  }
+
+  .page-title {
+    @apply text-2xl font-semibold sm:text-3xl;
+  }
+
+  .page-subtitle {
+    @apply max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base;
+  }
+
+  .surface-panel {
+    @apply rounded-3xl border border-border/80 bg-card/90 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.55)] backdrop-blur-sm;
+  }
+
+  .surface-muted {
+    @apply rounded-2xl border border-border/60 bg-background/70;
+  }
+
+  .ui-button-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60;
+  }
+
+  .ui-input {
+    @apply w-full rounded-2xl border border-input bg-background/80 px-3.5 py-2.5 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .ui-label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .metric-card {
+    @apply surface-panel p-4 sm:p-5;
   }
 }
 

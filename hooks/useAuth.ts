@@ -23,6 +23,11 @@ export function useAuthInit() {
   useEffect(() => {
     const supabase = createClient();
 
+    const clearInvalidSession = async () => {
+      await supabase.auth.signOut().catch(() => undefined);
+      logout();
+    };
+
     const init = async () => {
       setLoading(true);
       const {
@@ -36,7 +41,7 @@ export function useAuthInit() {
           setUser(user);
         } catch (error) {
           if (isInvalidSessionError(error)) {
-            logout();
+            await clearInvalidSession();
           } else {
             setUser(null);
           }
@@ -65,7 +70,7 @@ export function useAuthInit() {
           setUser(user);
         } catch (error) {
           if (isInvalidSessionError(error)) {
-            logout();
+            await clearInvalidSession();
           } else {
             setUser(null);
           }
@@ -82,30 +87,30 @@ export function useAuthInit() {
  * Redirect to /login if not authenticated.
  */
 export function useRequireAuth(redirectTo = "/login") {
-  const { user, token, isLoading } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user && !token) {
+    if (!isLoading && !user) {
       router.replace(redirectTo);
     }
-  }, [user, token, isLoading, router, redirectTo]);
+  }, [user, isLoading, router, redirectTo]);
 
-  return { user, token, isLoading };
+  return { user, isLoading };
 }
 
 /**
  * Redirect to /chat if already authenticated.
  */
 export function useRedirectIfAuthed(redirectTo = "/chat") {
-  const { user, token, isLoading } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && (user || token)) {
+    if (!isLoading && user) {
       router.replace(redirectTo);
     }
-  }, [user, token, isLoading, router, redirectTo]);
+  }, [user, isLoading, router, redirectTo]);
 
-  return { user, token, isLoading };
+  return { user, isLoading };
 }

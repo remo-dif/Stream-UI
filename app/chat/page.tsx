@@ -39,35 +39,41 @@ export default function ChatIndexPage() {
 
   if (authLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-6 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-        <MessageSquare className="w-8 h-8 text-primary" />
+    <section className="page-shell flex h-full items-center justify-center">
+      <div className="surface-panel mx-auto flex w-full max-w-2xl flex-col items-center px-6 py-12 text-center sm:px-10 sm:py-16">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-primary/10 text-primary">
+          <MessageSquare className="h-8 w-8" />
+        </div>
+        <span className="mb-3 rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Chat workspace
+        </span>
+        <h1 className="mb-2 text-3xl font-semibold">
+          Welcome back{user?.fullName ? `, ${user.fullName}` : ""}
+        </h1>
+        <p className="mb-8 max-w-md text-sm leading-7 text-muted-foreground sm:text-base">
+          Pick up an earlier conversation from the sidebar or open a fresh one
+          to draft, explore, and iterate quickly.
+        </p>
+        <button
+          onClick={handleNewChat}
+          disabled={isCreating}
+          className="ui-button-primary px-5 py-3"
+        >
+          {isCreating ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <MessageSquare className="h-4 w-4" />
+          )}
+          Start New Chat
+        </button>
       </div>
-      <h1 className="text-2xl font-bold mb-2">
-        Welcome back{user?.fullName ? `, ${user.fullName}` : ""}
-      </h1>
-      <p className="text-muted-foreground mb-8 max-w-sm">
-        Select a conversation from the sidebar or start a new one.
-      </p>
-      <button
-        onClick={handleNewChat}
-        disabled={isCreating}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
-      >
-        {isCreating ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <MessageSquare className="w-4 h-4" />
-        )}
-        Start New Chat
-      </button>
-    </div>
+    </section>
   );
 }
