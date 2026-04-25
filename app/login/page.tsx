@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Cpu, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,7 +23,7 @@ export default function LoginPage() {
   const { setUser, setToken } = useAuthStore();
   const router = useRouter();
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
