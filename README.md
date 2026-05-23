@@ -1,198 +1,175 @@
-# StreamAI — Next.js Frontend
+# Stream UI
 
-> Production-grade multi-tenant AI chat interface built on top of [Stream-API](https://github.com/remo-dif/Stream-API) (NestJS).
+Next.js frontend for the Stream AI workspace.
 
----
+This app provides:
+- login and session handling with Supabase
+- chat conversations and streaming responses
+- usage dashboard
+- async jobs UI
+- admin UI
+- settings UI
+- a responsive authenticated app shell
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 15 (App Router) |
-| Language | TypeScript 5 (strict) |
-| Styling | Tailwind CSS v3 + shadcn design tokens |
-| AI Hooks | AI SDK v5 (`@ai-sdk/react` — `useChat`) |
-| Auth | Supabase SSR (`@supabase/ssr`) |
-| State | Zustand v5 (persisted auth) |
-| Charts | Recharts |
-| Markdown | react-markdown + remark-gfm |
-| Code highlight | react-syntax-highlighter (Prism) |
-| Notifications | Sonner |
-| Icons | Lucide React |
+- Next.js 15 App Router
+- React 19
+- TypeScript
+- Tailwind CSS
+- Zustand
+- Supabase SSR
+- Recharts
+- AI SDK / streaming UI helpers
 
----
+## Works With
+
+This frontend is designed to run against the sibling NestJS backend in:
+
+[`C:\Users\ASUS\Desktop\projects\ai-saas-nestjs`](/C:/Users/ASUS/Desktop/projects/ai-saas-nestjs)
+
+Expected local URLs:
+- frontend: `http://localhost:3001`
+- backend: `http://localhost:3000`
 
 ## Project Structure
 
-```
-stream-ui/
-├── app/
-│   ├── api/chat/route.ts          # Proxy → NestJS SSE stream
-│   ├── chat/
-│   │   ├── layout.tsx             # Sidebar wrapper
-│   │   ├── page.tsx               # New chat landing
-│   │   ├── loading.tsx            # Skeleton while hydrating
-│   │   └── [conversationId]/
-│   │       └── page.tsx           # Active conversation
-│   ├── dashboard/page.tsx         # Token usage + charts
-│   ├── jobs/page.tsx              # Async BullMQ jobs
-│   ├── admin/page.tsx             # User management (admin only)
-│   ├── settings/page.tsx          # Profile + tenant settings
-│   ├── login/page.tsx             # Supabase auth
-│   ├── global-error.tsx           # Error boundary
-│   └── not-found.tsx
-│
-├── components/
-│   ├── AppSidebar.tsx             # Nav + conversation list + quota
-│   ├── QuotaIndicator.tsx         # Live quota progress bar
-│   ├── chat/
-│   │   ├── ChatWindow.tsx         # useChat orchestrator ← main component
-│   │   ├── ChatMessage.tsx        # Bubble + markdown + copy/regen
-│   │   ├── ChatInput.tsx          # Controlled textarea + send/stop
-│   │   ├── ChatErrorBanner.tsx    # Rate-limit countdown + retry
-│   │   ├── TokenBadge.tsx         # Animated token count
-│   │   └── TypingIndicator.tsx    # Animated dots
-│   └── ui/
-│       └── Skeleton.tsx           # Loading skeletons
-│
-├── hooks/
-│   ├── useAuth.ts                 # Supabase session sync + redirect guards
-│   ├── useChatInput.ts            # Controlled textarea (AI SDK v5)
-│   ├── useJobPoller.ts            # Polling + optimistic job submission
-│   ├── useQuota.ts                # Periodic quota refresh
-│   └── useRetry.ts                # Exponential backoff wrapper
-│
-├── lib/
-│   ├── api.ts                     # Typed fetch wrappers for all NestJS endpoints
-│   ├── store.ts                   # Zustand auth store
-│   ├── supabase.ts                # Browser Supabase client
-│   └── utils.ts                   # cn, formatTokens, formatDate, etc.
-│
-├── types/index.ts                 # Shared TypeScript types (mirrors NestJS entities)
-├── middleware.ts                  # Edge auth guard (Supabase SSR)
-├── ARCHITECTURE.md                # Full architecture + scaling + cost docs
-└── .env.example
+```text
+app/
+  api/chat/route.ts         backend streaming proxy
+  login/                    auth page
+  chat/                     chat landing and conversation routes
+  dashboard/                usage dashboard
+  jobs/                     async jobs
+  admin/                    admin pages
+  settings/                 settings pages
+
+components/
+  AppShell.tsx              responsive authenticated shell
+  AppSidebar.tsx            navigation, conversations, quota, account controls
+  QuotaIndicator.tsx
+  chat/                     chat UI pieces
+
+hooks/
+  useAuth.ts
+
+lib/
+  api.ts                    typed backend calls
+  store.ts                  auth state
+  supabase.ts
+  utils.ts
 ```
 
----
+## Environment
 
-## Quick Start
+Copy `.env.example` to `.env`.
+
+Typical values:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3001
+```
+
+## Local Development
+
+Install dependencies:
 
 ```bash
-# 1. Clone and install
-git clone <this-repo>
-cd stream-ui
 npm install
-
-# 2. Configure environment
-cp .env.example .env.local
-# Fill in:
-#   NEXT_PUBLIC_SUPABASE_URL
-#   NEXT_PUBLIC_SUPABASE_ANON_KEY
-#   NEXT_PUBLIC_API_URL   (your NestJS server, e.g. http://localhost:3000)
-
-# 3. Start NestJS backend first (from Stream-API repo)
-cd ../Stream-API
-npm run start:dev
-
-# 4. Start Next.js (port 3001 to avoid conflict)
-cd ../stream-ui
-npm run dev -- -p 3001
 ```
 
-Open [http://localhost:3001](http://localhost:3001).
+Start the backend first in the sibling repo:
 
----
-
-## How Streaming Works
-
-```
-useChat (browser)
-  ↓ POST /api/chat  { messages, conversationId }
-Next.js route handler  (app/api/chat/route.ts)
-  ↓ fetch with Bearer JWT  →  NestJS /chat/conversations/:id/stream
-NestJS  →  Anthropic streaming SDK  →  SSE chunks
-  ↑  pipes stream body back unchanged
-Next.js  →  pipes to browser
-  ↑  AI SDK parses SSE → React state → live UI updates
-```
-
-The `DefaultChatTransport` in `ChatWindow.tsx` injects the Supabase JWT
-and `conversationId` on every request without any global fetch patching.
-
----
-
-## Key Design Patterns
-
-### AI SDK v5 input management
-
-AI SDK v5 no longer manages the textarea value internally. The
-`useChatInput` hook provides a fully controlled `<textarea>` that calls
-`sendMessage({ text })` and clears itself after each submission.
-
-### Optimistic UI for jobs
-
-`useOptimisticJobs` immediately inserts a `waiting` job into the list
-before the API call returns. On success it swaps the temp ID for the real
-one; on failure it rolls back — giving instant feedback without a loading
-spinner.
-
-### Retry with backoff
-
-`useRetry` wraps any async function with configurable exponential backoff.
-It skips retries for client errors (4xx except 429) and exposes a
-`nextRetryMs` countdown for the UI.
-
-### Rate-limit countdown
-
-`ChatErrorBanner` detects `429` responses and runs a countdown timer
-sourced from the `Retry-After` header. The send button stays disabled
-until the countdown expires.
-
----
-
-## Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✓ | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | Supabase anon public key |
-| `NEXT_PUBLIC_API_URL` | ✓ | NestJS base URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server only | For admin operations |
-| `NEXT_PUBLIC_APP_URL` | Optional | Used in email callbacks |
-
----
-
-## Production Deployment
-
-### Vercel (recommended for Next.js)
 ```bash
-vercel --prod
-# Add env vars in Vercel dashboard
-# Set NEXT_PUBLIC_API_URL to your ECS ALB or API Gateway URL
+cd ../ai-saas-nestjs
+npm run start:dev
 ```
 
-### Docker / ECS
-```dockerfile
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN npm ci && npm run build
+Run the frontend:
 
-FROM node:22-alpine AS runner
-WORKDIR /app
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-EXPOSE 3001
-CMD ["node", "server.js"]
+```bash
+cd ../stream-ui
+npm run dev
 ```
 
-Set `output: 'standalone'` in `next.config.ts` for Docker builds.
+Open:
 
----
+```text
+http://localhost:3001
+```
 
-## See Also
+## Production Commands
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — Full system design, cost analysis, scaling strategy, failure modes
-- [Stream-API](https://github.com/remo-dif/Stream-API) — The NestJS backend
-- [AI SDK Docs](https://ai-sdk.dev/docs/reference/ai-sdk-ui/use-chat) — useChat reference
+Build:
+
+```bash
+npm run build
+```
+
+Start:
+
+```bash
+npm run start
+```
+
+Type check:
+
+```bash
+npm run type-check
+```
+
+Lint:
+
+```bash
+npm run lint
+```
+
+## Auth Flow
+
+- Supabase manages browser auth/session
+- middleware protects non-public routes
+- the client hydrates auth state from Supabase
+- the frontend calls the Nest backend for `/auth/user` and tenant-aware data
+
+## UI Notes
+
+Recent UI work includes:
+- a reusable mobile-friendly `AppShell`
+- improved sidebar behavior on mobile and desktop
+- better login UX with clearer validation and feedback
+- a more responsive dashboard layout
+- cleaner shared Tailwind utility patterns in `app/globals.css`
+
+## Streaming Flow
+
+```text
+Browser chat UI
+  -> Next.js route handler
+    -> NestJS SSE endpoint
+      -> provider-backed LLM response stream
+```
+
+The frontend does not call the model provider directly. It talks to the backend.
+
+## Verification
+
+Verified recently:
+- `npm run build` passes
+- `npm run type-check` passes
+
+If `type-check` fails because of missing `.next/types`, run `npm run build` first so Next regenerates them.
+
+## Current Status
+
+The app is aligned with the current backend routes and contracts for:
+- login
+- chat shell and conversation flow
+- dashboard
+- jobs
+- admin
+- settings
+
+Live AI replies still depend on the backend having a valid funded provider key configured.
