@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthInit } from "@/hooks/useAuth";
-import { AppSidebar } from "@/components/AppSidebar";
+import { AppShell } from "@/components/AppShell";
 import { usePathname } from "next/navigation";
 
 /**
@@ -22,9 +22,8 @@ export default function ChatLayout({
     : undefined;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <AppSidebar activeConversationId={activeConversationId} />
-      <main className="flex-1 overflow-hidden">{children}</main>
-    </div>
+    <AppShell activeConversationId={activeConversationId} title="Chat workspace">
+      {children}
+    </AppShell>
   );
 }

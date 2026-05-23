@@ -1,258 +1,377 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { TooltipProps } from "recharts";
 import {
-  AreaChart,
   Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
 } from "recharts";
-import { Zap, TrendingUp, MessageSquare, Clock, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import {
+  Activity,
+  Clock,
+  Loader2,
+  MessageSquare,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { usageApi } from "@/lib/api";
-import { useAuthStore } from "@/lib/store";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { formatTokens, formatMs, cn } from "@/lib/utils";
-import type { UsageSummary, DailyUsage } from "@/types";
+import { useAuthStore } from "@/lib/store";
+import { cn, formatMs, formatTokens } from "@/lib/utils";
+import type { DailyUsage, UsageSummary } from "@/types";
 
-/**
- * DashboardPage Component
- * 
- * Provides a comprehensive overview of the user's/tenant's token usage 
- * and request analytics over the last 30 days.
- * 
- * Key Features:
- * 1. Usage Summary: Displays high-level stats like total tokens, avg response time, and quota.
- * 2. Visualizations: Uses Recharts (AreaChart, BarChart) to show daily trends.
- * 3. Quota Management: Shows a visual progress bar of token consumption against the limit.
- * 4. Data Loading: Fetches data from usageApi with fallback to mock data for demo purposes.
- */
+type ChartDatum = {
+  isoDate: string;
+  date: string;
+  tokens: number;
+  requests: number;
+};
+
+function UsageTooltip({
+  active,
+  payload,
+  label,
+}: TooltipProps<number, string>) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const tokens = payload.find((entry) => entry.dataKey === "tokens")?.value;
+  const requests = payload.find((entry) => entry.dataKey === "requests")?.value;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card/95 px-3 py-2.5 text-xs shadow-xl backdrop-blur">
+      <p className="font-semibold text-foreground">{label}</p>
+      {typeof tokens === "number" && (
+        <p className="mt-1 text-muted-foreground">
+          Tokens: <span className="font-medium text-foreground">{formatTokens(tokens)}</span>
+        </p>
+      )}
+      {typeof requests === "number" && (
+        <p className="text-muted-foreground">
+          Requests: <span className="font-medium text-foreground">{requests}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  useRequireAuth();
+  const { isLoading: authLoading } = useRequireAuth();
   const { token } = useAuthStore();
 
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [daily, setDaily] = useState<DailyUsage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch usage stats on component mount
   useEffect(() => {
     if (!token) return;
+
     const load = async () => {
       setIsLoading(true);
+
       try {
-        const [s, d] = await Promise.all([
+        const [nextSummary, nextDaily] = await Promise.all([
           usageApi.summary(token),
           usageApi.daily(token, 30),
         ]);
-        setSummary(s);
-        setDaily(d);
+        setSummary(nextSummary);
+        setDaily(nextDaily);
       } catch {
-        // Fallback to mock data for demo/prototyping if the API is unavailable
         setSummary(MOCK_SUMMARY);
         setDaily(MOCK_DAILY);
       } finally {
         setIsLoading(false);
       }
     };
+
     load();
   }, [token]);
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      <div className="flex h-full w-full items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  const quotaPct = summary?.quotaUsedPercent ?? 0;
+  const safeSummary = summary ?? MOCK_SUMMARY;
+  const quotaPct = safeSummary.quotaUsedPercent;
+  const quotaRemaining = Math.max(
+    safeSummary.quotaLimit - safeSummary.totalTokens,
+    0,
+  );
+  const quotaTone =
+    quotaPct >= 90
+      ? "bg-destructive"
+      : quotaPct >= 70
+        ? "bg-amber-500"
+        : "bg-primary";
 
   const stats = [
     {
       label: "Total Tokens",
-      value: formatTokens(summary?.totalTokens ?? 0),
+      value: formatTokens(safeSummary.totalTokens),
       icon: Zap,
-      sub: `${formatTokens(summary?.promptTokens ?? 0)} prompt · ${formatTokens(summary?.completionTokens ?? 0)} completion`,
+      sub: `${formatTokens(safeSummary.promptTokens)} prompt / ${formatTokens(safeSummary.completionTokens)} completion`,
       color: "text-primary",
       bg: "bg-primary/10",
     },
     {
       label: "Total Requests",
-      value: (summary?.totalRequests ?? 0).toLocaleString(),
+      value: safeSummary.totalRequests.toLocaleString(),
       icon: MessageSquare,
-      sub: "chat completions",
+      sub: "completed chat requests",
       color: "text-violet-500",
       bg: "bg-violet-500/10",
     },
     {
       label: "Avg Response",
-      value: formatMs(summary?.avgResponseTime ?? 0),
+      value: formatMs(safeSummary.avgResponseTime),
       icon: Clock,
       sub: "end-to-end latency",
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
     },
     {
-      label: "Quota Used",
-      value: `${quotaPct.toFixed(1)}%`,
-      icon: TrendingUp,
-      sub: `of ${formatTokens(summary?.quotaLimit ?? 0)} tokens`,
-      color: quotaPct > 80 ? "text-destructive" : "text-amber-500",
-      bg: quotaPct > 80 ? "bg-destructive/10" : "bg-amber-500/10",
+      label: "Today",
+      value: formatTokens(safeSummary.todayTokens),
+      icon: Activity,
+      sub: "tokens used today",
+      color: "text-sky-500",
+      bg: "bg-sky-500/10",
     },
   ];
 
-  const chartData = daily.map((d) => ({
-    date: format(parseISO(d.date), "MMM d"),
-    tokens: d.tokens,
-    requests: d.requests,
+  const chartData: ChartDatum[] = daily.map((entry) => ({
+    isoDate: entry.date,
+    date: format(parseISO(entry.date), "MMM d"),
+    tokens: entry.tokens,
+    requests: entry.requests,
   }));
 
   return (
-    <section className="flex h-full flex-col overflow-y-auto">
-      <div className="page-shell max-w-5xl space-y-6">
-        {/* Header */}
+    <section className="flex h-full w-full flex-col overflow-y-auto">
+      <div className="page-shell max-w-6xl">
         <header className="page-header">
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Insights
           </span>
-          <h1 className="page-title">Usage Dashboard</h1>
-          <p className="page-subtitle">
-            Token consumption and request analytics for the last 30 days
-          </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-2">
+              <h1 className="page-title">Usage Dashboard</h1>
+              <p className="page-subtitle">
+                Token consumption, request volume, and quota health for the last 30 days.
+              </p>
+            </div>
+
+            <div className="surface-muted grid gap-3 px-4 py-3 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Quota Used
+                </p>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {quotaPct.toFixed(1)}%
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Remaining
+                </p>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {formatTokens(quotaRemaining)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  30-Day Volume
+                </p>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {formatTokens(safeSummary.totalTokens)}
+                </p>
+              </div>
+            </div>
+          </div>
         </header>
 
-        {/* Quota bar */}
-        <div className="surface-panel p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Quota Usage</span>
-            <span className="text-sm text-muted-foreground">
-              {formatTokens(summary?.totalTokens ?? 0)} / {formatTokens(summary?.quotaLimit ?? 0)} tokens
-            </span>
-          </div>
-          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-700",
-                quotaPct > 80 ? "bg-destructive" : quotaPct > 60 ? "bg-amber-500" : "bg-primary",
-              )}
-              style={{ width: `${Math.min(quotaPct, 100)}%` }}
-            />
-          </div>
-          <div className="flex justify-between mt-1.5">
-            <span className="text-xs text-muted-foreground">{quotaPct.toFixed(1)}% used</span>
-            <span className="text-xs text-muted-foreground">
-              {formatTokens((summary?.quotaLimit ?? 0) - (summary?.totalTokens ?? 0))} remaining
-            </span>
-          </div>
-        </div>
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map(({ label, value, icon: Icon, sub, color, bg }) => (
-            <article key={label} className="metric-card">
-              <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-2xl", bg)}>
-                <Icon className={cn("h-4 w-4", color)} />
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.9fr)]">
+          <section className="surface-panel p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Quota Usage</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {formatTokens(safeSummary.totalTokens)} of {formatTokens(safeSummary.quotaLimit)} tokens used
+                </p>
               </div>
-              <p className="text-2xl font-semibold">{value}</p>
-              <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-              <p className="mt-2 text-sm text-muted-foreground/80">{sub}</p>
-            </article>
-          ))}
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                <TrendingUp className="h-3.5 w-3.5" />
+                {quotaRemaining > 0
+                  ? `${formatTokens(quotaRemaining)} remaining`
+                  : "Quota exhausted"}
+              </div>
+            </div>
+
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn("h-full rounded-full transition-all duration-700", quotaTone)}
+                style={{ width: `${Math.min(quotaPct, 100)}%` }}
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Number(quotaPct.toFixed(1))}
+                aria-label="Quota usage"
+              />
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="surface-muted px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Usage Status
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {quotaPct >= 90
+                    ? "Critical"
+                    : quotaPct >= 70
+                      ? "Monitor closely"
+                      : "Healthy"}
+                </p>
+              </div>
+              <div className="surface-muted px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Today
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {formatTokens(safeSummary.todayTokens)} tokens
+                </p>
+              </div>
+              <div className="surface-muted px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Request Load
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {safeSummary.totalRequests.toLocaleString()} total requests
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            {stats.map(({ label, value, icon: Icon, sub, color, bg }) => (
+              <article key={label} className="metric-card min-w-0">
+                <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-2xl", bg)}>
+                  <Icon className={cn("h-4 w-4", color)} />
+                </div>
+                <p className="truncate text-2xl font-semibold text-foreground">{value}</p>
+                <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  {label}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground/80">{sub}</p>
+              </article>
+            ))}
+          </section>
         </div>
 
-        {/* Token trend chart */}
-        <div className="surface-panel p-5 sm:p-6">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Daily Token Usage</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="tokenGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => formatTokens(v)}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                }}
-                formatter={(v: number) => [formatTokens(v), "Tokens"]}
-              />
-              <Area
-                type="monotone"
-                dataKey="tokens"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                fill="url(#tokenGrad)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <div className="grid gap-4 2xl:grid-cols-2">
+          <section className="surface-panel min-w-0 p-4 sm:p-6">
+            <div className="mb-4 flex flex-col gap-1">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Daily Token Usage
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Track which days are driving the most model usage.
+              </p>
+            </div>
 
-        {/* Requests bar chart */}
-        <div className="surface-panel p-5 sm:p-6">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Daily Requests</h2>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                }}
-              />
-              <Bar
-                dataKey="requests"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-                opacity={0.8}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+            <div className="h-[260px] min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 8, bottom: 0, left: -16 }}>
+                  <defs>
+                    <linearGradient id="tokenGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.32} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.03} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={24}
+                  />
+                  <YAxis
+                    width={44}
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value: number) => formatTokens(value)}
+                  />
+                  <Tooltip content={<UsageTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="tokens"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2.2}
+                    fill="url(#tokenGrad)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section className="surface-panel min-w-0 p-4 sm:p-6">
+            <div className="mb-4 flex flex-col gap-1">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Daily Requests
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Compare request bursts with the token trend above.
+              </p>
+            </div>
+
+            <div className="h-[260px] min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 10, right: 8, bottom: 0, left: -16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={24}
+                  />
+                  <YAxis
+                    width={36}
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip content={<UsageTooltip />} />
+                  <Bar
+                    dataKey="requests"
+                    fill="hsl(var(--primary))"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={24}
+                    opacity={0.85}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
         </div>
       </div>
     </section>
   );
 }
-
-// ─── Mock data (used when API is not yet connected) ───────────────────────────
 
 const MOCK_SUMMARY: UsageSummary = {
   totalTokens: 142_000,
@@ -266,11 +385,12 @@ const MOCK_SUMMARY: UsageSummary = {
   todayTokens: 4_200,
 };
 
-const MOCK_DAILY: DailyUsage[] = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() - (29 - i));
+const MOCK_DAILY: DailyUsage[] = Array.from({ length: 30 }, (_, index) => {
+  const date = new Date();
+  date.setDate(date.getDate() - (29 - index));
+
   return {
-    date: d.toISOString().split("T")[0],
+    date: date.toISOString().split("T")[0],
     tokens: Math.floor(2000 + Math.random() * 8000),
     requests: Math.floor(5 + Math.random() * 20),
   };

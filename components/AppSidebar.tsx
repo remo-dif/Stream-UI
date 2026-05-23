@@ -29,10 +29,14 @@ import type { Conversation } from "@/types";
 
 interface AppSidebarProps {
   activeConversationId?: string;
+  mobile?: boolean;
+  onNavigate?: () => void;
 }
 
 export function AppSidebar({
   activeConversationId,
+  mobile = false,
+  onNavigate,
 }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -69,6 +73,7 @@ export function AppSidebar({
     try {
       const conv = await chatApi.createConversation("New conversation", token);
       setConversations((prev) => [conv, ...prev]);
+      onNavigate?.();
       router.push(`/chat/${conv.id}`);
     } catch {
       toast.error("Failed to create conversation");
@@ -100,6 +105,7 @@ export function AppSidebar({
       }
       await supabase.auth.signOut();
     } finally {
+      onNavigate?.();
       logout();
       router.replace("/login");
     }
@@ -116,9 +122,11 @@ export function AppSidebar({
 
   return (
     <aside
+      id={mobile ? "mobile-sidebar" : undefined}
       className={cn(
-        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur transition-all duration-200",
-        collapsed ? "w-[78px]" : "w-72 xl:w-80",
+        "flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur transition-all duration-200",
+        mobile ? "h-full w-full shadow-2xl" : "sticky top-0 h-screen",
+        !mobile && (collapsed ? "w-[78px]" : "w-72 xl:w-80"),
       )}
     >
       <div className="border-b border-sidebar-border px-3 py-4">
@@ -180,6 +188,7 @@ export function AppSidebar({
             <Link
               key={href}
               href={href}
+              onClick={() => onNavigate?.()}
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
@@ -220,6 +229,7 @@ export function AppSidebar({
                 <Link
                   key={conv.id}
                   href={`/chat/${conv.id}`}
+                  onClick={() => onNavigate?.()}
                   className={cn(
                     "group flex items-center justify-between rounded-2xl px-3 py-2 text-sm transition-colors",
                     activeConversationId === conv.id
@@ -265,6 +275,7 @@ export function AppSidebar({
 
         <Link
           href="/settings"
+          onClick={() => onNavigate?.()}
           className={cn(
             "flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
             collapsed && "justify-center",
