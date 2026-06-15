@@ -24,9 +24,7 @@ This app provides:
 
 ## Works With
 
-This frontend is designed to run against the sibling NestJS backend in:
-
-[`C:\Users\ASUS\Desktop\projects\ai-saas-nestjs`](/C:/Users/ASUS/Desktop/projects/ai-saas-nestjs)
+This frontend is designed to run against the `Stream-API` NestJS backend.
 
 Expected local URLs:
 - frontend: `http://localhost:3001`
@@ -81,17 +79,15 @@ Install dependencies:
 npm install
 ```
 
-Start the backend first in the sibling repo:
+Start the backend first from the backend repo:
 
 ```bash
-cd ../ai-saas-nestjs
 npm run start:dev
 ```
 
-Run the frontend:
+Then run the frontend from this repo:
 
 ```bash
-cd ../stream-ui
 npm run dev
 ```
 
